@@ -1,0 +1,107 @@
+﻿@page "/schedule"
+@using BadmintonSVB.Models
+@inject BadmintonSVB.Data.ScheduleGenerator ScheduleGenerator
+@rendermode InteractiveServer
+
+<h3>Speelschema Generator</h3>
+
+<div>
+    <h4>Selecteer standaard spelers:</h4>
+    @foreach (var player in DefaultPlayers)
+    {
+        <div>
+            <input type="checkbox" @bind="player.IsSelected" />
+            <label>@player.Name</label>
+        </div>
+    }
+</div>
+
+<div>
+    <label>Extra spelers:</label>
+    <textarea @bind="AdditionalPlayerInput" placeholder="Voeg extra spelers toe, gescheiden door een nieuwe regel"></textarea>
+</div>
+
+<div>
+    <label>Aantal rondes:</label>
+    <input type="number" @bind="TotalRounds" min="1" />
+</div>
+<div>
+    <label>Aantal banen:</label>
+    <input type="number" @bind="Courts" min="1" />
+</div>
+<button @onclick="GenerateSchedule">Genereer Speelschema</button>
+
+@if (GeneratedSchedule != null)
+{
+    <h4>Gegenereerd Speelschema</h4>
+    @foreach (var round in GeneratedSchedule.Rounds)
+    {
+        <div>
+            <h5>Ronde @round.RoundNumber</h5>
+            @foreach (var match in round.Matches)
+            {
+                <p>
+                    Baan: @string.Join(" & ", match.Team1.Select(p => p.Name))
+                    tegen @string.Join(" & ", match.Team2.Select(p => p.Name))
+                </p>
+            }
+            @if (round.BenchedPlayers.Any())
+            {
+                <p>Op de bank: @string.Join(", ", round.BenchedPlayers.Select(p => p.Name))</p>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<SelectablePlayer> DefaultPlayers { get; set; } = new()
+    {
+        new SelectablePlayer { Name = "Ronald" },
+        new SelectablePlayer { Name = "Jaap" },
+        new SelectablePlayer { Name = "Rene" },
+        new SelectablePlayer { Name = "Lorena" },
+        new SelectablePlayer { Name = "Robert" },
+        new SelectablePlayer { Name = "Ilona" },
+        new SelectablePlayer { Name = "Tiny" },
+        new SelectablePlayer { Name = "Erna" },
+        new SelectablePlayer { Name = "Patrick" },
+        new SelectablePlayer { Name = "Dico" },
+        new SelectablePlayer { Name = "Chenoa" },
+        new SelectablePlayer { Name = "Yvonne" },
+        new SelectablePlayer { Name = "Diana" },
+        new SelectablePlayer { Name = "Christa" },
+        new SelectablePlayer { Name = "Henk" }
+    };
+
+    private string AdditionalPlayerInput { get; set; }
+    private int TotalRounds { get; set; } = 10;
+    private int Courts { get; set; } = 2;
+    private GameSchedule GeneratedSchedule { get; set; }
+
+    private void GenerateSchedule()
+    {
+        // Selecteer standaard spelers die aangevinkt zijn
+        var players = DefaultPlayers
+            .Where(p => p.IsSelected)
+            .Select((p, index) => new Player { Id = index + 1, Name = p.Name })
+            .ToList();
+
+        // Voeg extra spelers toe
+        if (!string.IsNullOrWhiteSpace(AdditionalPlayerInput))
+        {
+            var additionalPlayers = AdditionalPlayerInput
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select((name, index) => new Player { Id = players.Count + index + 1, Name = name.Trim() });
+            players.AddRange(additionalPlayers);
+        }
+
+        // Genereer speelschema
+        GeneratedSchedule = ScheduleGenerator.GenerateSchedule(players, TotalRounds, Courts);
+    }
+
+    private class SelectablePlayer
+    {
+        public string Name { get; set; }
+        public bool IsSelected { get; set; } = true; // Standaard geselecteerd
+    }
+}
